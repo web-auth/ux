@@ -38,39 +38,58 @@ export default class extends Controller {
     }
 
     async signin(event: Event) {
+        console.log('CSR-01');
         event.preventDefault();
+        console.log('CSR-02');
         const data = this._getData();
+        console.log('CSR-03');
         const optionsHeaders = {
             'Content-Type': 'application/json',
         };
+        console.log('CSR-04');
         this._dispatchEvent('webauthn:request:options', { data, headers: optionsHeaders });
+        console.log('CSR-05');
         const resp = await fetch(this.requestOptionsUrlValue || '/request/options', {
             method: 'POST',
             headers: optionsHeaders,
             body: JSON.stringify(data),
         });
-
+        console.log('CSR-06');
         const asseResp = await startAuthentication(await resp.json());
 
+        console.log('CSR-07');
         const responseHeaders = {
             'Content-Type': 'application/json',
         };
+
+        console.log('CSR-08');
         this._dispatchEvent('webauthn:request:response', { response: asseResp, headers: responseHeaders });
+        console.log('CSR-09');
         const verificationResp = await fetch(this.requestResultUrlValue || '/request', {
             method: 'POST',
             headers: responseHeaders,
             body: JSON.stringify(asseResp),
         });
-
+        console.log('CSR-10');
         const verificationJSON = await verificationResp.json();
+
+        console.log('CSR-11');
         if (verificationJSON && verificationJSON.errorMessage === '') {
+            console.log('CSR-12');
             this._dispatchEvent('webauthn:request:success', verificationJSON);
+            console.log('CSR-13');
             if (this.requestSuccessRedirectUriValue) {
+                console.log('CSR-14');
                 window.location.replace(this.requestSuccessRedirectUriValue);
+                console.log('CSR-15');
             }
+            console.log('CSR-16');
         } else {
+            console.log('CSR-17');
             this._dispatchEvent('webauthn:request:failure', verificationJSON.errorMessage);
+            console.log('CSR-18');
         }
+        console.log('CSR-19');
     }
 
     async signup(event: Event) {
