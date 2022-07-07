@@ -119,13 +119,23 @@ export default class extends Controller {
         } catch (e) {
             //Nothing to do
         }
-        return {
+
+        function removeEmpty(obj) {
+            return Object.entries(obj)
+                .filter(([_, v]) => v !== null)
+                .reduce(
+                    (acc, [k, v]) => ({ ...acc, [k]: v === Object(v) ? removeEmpty(v) : v }),
+                    {}
+                );
+        }
+
+        return removeEmpty({
             username: data.get(this.usernameField || 'username'),
             displayName: data.get(this.displayNameField || 'displayName'),
             attestation: data.get(this.attestationField || 'attestation'),
             userVerification: data.get(this.userVerificationField || 'userVerification'),
             residentKey: data.get(this.residentKeyField || 'residentKey'),
             authenticatorAttachment: data.get(this.authenticatorAttachmentField || 'authenticatorAttachment'),
-        };
+        });
     }
 }

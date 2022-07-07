@@ -93,14 +93,19 @@ class default_1 extends Controller {
         }
         catch (e) {
         }
-        return {
+        function removeEmpty(obj) {
+            return Object.entries(obj)
+                .filter(([_, v]) => v !== null)
+                .reduce((acc, [k, v]) => (Object.assign(Object.assign({}, acc), { [k]: v === Object(v) ? removeEmpty(v) : v })), {});
+        }
+        return removeEmpty({
             username: data.get(this.usernameField || 'username'),
             displayName: data.get(this.displayNameField || 'displayName'),
             attestation: data.get(this.attestationField || 'attestation'),
             userVerification: data.get(this.userVerificationField || 'userVerification'),
             residentKey: data.get(this.residentKeyField || 'residentKey'),
             authenticatorAttachment: data.get(this.authenticatorAttachmentField || 'authenticatorAttachment'),
-        };
+        });
     }
 }
 default_1.values = {
