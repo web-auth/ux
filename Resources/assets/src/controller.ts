@@ -55,7 +55,9 @@ export default class extends Controller {
             body: JSON.stringify(data),
         });
         console.log('CSR-06');
-        const asseResp = await startAuthentication(await resp.json());
+        const respJson = await resp.json();
+        console.log('CSR-06.1');
+        const asseResp = await startAuthentication(respJson);
 
         console.log('CSR-07');
         const responseHeaders = {
