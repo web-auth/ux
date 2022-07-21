@@ -1,11 +1,12 @@
-import { Controller } from '@hotwired/stimulus';
-import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
+import {Controller} from '@hotwired/stimulus';
+import {startAuthentication, startRegistration} from '@simplewebauthn/browser';
 
 class default_1 extends Controller {
     initialize() {
         this._dispatchEvent = this._dispatchEvent.bind(this);
         this._getData = this._getData.bind(this);
     }
+
     connect() {
         const options = {
             requestResultUrl: this.requestResultUrl || '/request',
@@ -15,8 +16,9 @@ class default_1 extends Controller {
             creationOptionsUrl: this.creationOptionsUrl || '/creation/options',
             creationSuccessRedirectUri: this.creationSuccessRedirectUri || null,
         };
-        this._dispatchEvent('webauthn:connect', { options });
+        this._dispatchEvent('webauthn:connect', {options});
     }
+
     async signin(event) {
         console.log('CSR-01');
         event.preventDefault();
@@ -27,7 +29,7 @@ class default_1 extends Controller {
             'Content-Type': 'application/json',
         };
         console.log('CSR-04');
-        this._dispatchEvent('webauthn:request:options', { data, headers: optionsHeaders });
+        this._dispatchEvent('webauthn:request:options', {data, headers: optionsHeaders});
         console.log('CSR-05');
         const resp = await fetch(this.requestOptionsUrlValue || '/request/options', {
             method: 'POST',
@@ -43,7 +45,7 @@ class default_1 extends Controller {
             'Content-Type': 'application/json',
         };
         console.log('CSR-08');
-        this._dispatchEvent('webauthn:request:response', { response: asseResp, headers: responseHeaders });
+        this._dispatchEvent('webauthn:request:response', {response: asseResp, headers: responseHeaders});
         console.log('CSR-09');
         const verificationResp = await fetch(this.requestResultUrlValue || '/request', {
             method: 'POST',
@@ -63,21 +65,21 @@ class default_1 extends Controller {
                 console.log('CSR-15');
             }
             console.log('CSR-16');
-        }
-        else {
+        } else {
             console.log('CSR-17');
             this._dispatchEvent('webauthn:request:failure', verificationJSON.errorMessage);
             console.log('CSR-18');
         }
         console.log('CSR-19');
     }
+
     async signup(event) {
         event.preventDefault();
         const data = this._getData();
         const optionsHeaders = {
             'Content-Type': 'application/json',
         };
-        this._dispatchEvent('webauthn:creation:options', { data, headers: optionsHeaders });
+        this._dispatchEvent('webauthn:creation:options', {data, headers: optionsHeaders});
         const resp = await fetch(this.creationOptionsUrlValue || '/creation/options', {
             method: 'POST',
             headers: optionsHeaders,
@@ -87,7 +89,7 @@ class default_1 extends Controller {
         const responseHeaders = {
             'Content-Type': 'application/json',
         };
-        this._dispatchEvent('webauthn:creation:response', { response: attResp, headers: responseHeaders });
+        this._dispatchEvent('webauthn:creation:response', {response: attResp, headers: responseHeaders});
         const verificationResp = await fetch(this.creationResultUrlValue || '/creation', {
             method: 'POST',
             headers: responseHeaders,
@@ -99,26 +101,28 @@ class default_1 extends Controller {
             if (this.creationSuccessRedirectUriValue) {
                 window.location.replace(this.creationSuccessRedirectUriValue);
             }
-        }
-        else {
+        } else {
             this._dispatchEvent('webauthn:creation:failure', verificationJSON.errorMessage);
         }
     }
+
     _dispatchEvent(name, payload) {
-        this.element.dispatchEvent(new CustomEvent(name, { detail: payload, bubbles: true }));
+        this.element.dispatchEvent(new CustomEvent(name, {detail: payload, bubbles: true}));
     }
+
     _getData() {
         let data = new FormData();
         try {
             data = new FormData(this.element);
+        } catch (e) {
         }
-        catch (e) {
-        }
+
         function removeEmpty(obj) {
             return Object.entries(obj)
                 .filter(([_, v]) => v !== null)
-                .reduce((acc, [k, v]) => (Object.assign(Object.assign({}, acc), { [k]: v === Object(v) ? removeEmpty(v) : v })), {});
+                .reduce((acc, [k, v]) => (Object.assign(Object.assign({}, acc), {[k]: v === Object(v) ? removeEmpty(v) : v})), {});
         }
+
         return removeEmpty({
             username: data.get(this.usernameField || 'username'),
             displayName: data.get(this.displayNameField || 'displayName'),
@@ -129,6 +133,7 @@ class default_1 extends Controller {
         });
     }
 }
+
 default_1.values = {
     requestResultUrl: String,
     requestOptionsUrl: String,
@@ -144,4 +149,4 @@ default_1.values = {
     authenticatorAttachmentField: String,
 };
 
-export { default_1 as default };
+export {default_1 as default};

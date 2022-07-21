@@ -1,7 +1,7 @@
 'use strict';
 
-import { Controller } from '@hotwired/stimulus';
-import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
+import {Controller} from '@hotwired/stimulus';
+import {startAuthentication, startRegistration} from '@simplewebauthn/browser';
 
 export default class extends Controller {
     static values = {
@@ -34,7 +34,7 @@ export default class extends Controller {
             creationSuccessRedirectUri: this.creationSuccessRedirectUri || null,
         };
 
-        this._dispatchEvent('webauthn:connect', { options });
+        this._dispatchEvent('webauthn:connect', {options});
     }
 
     async signin(event: Event) {
@@ -47,7 +47,7 @@ export default class extends Controller {
             'Content-Type': 'application/json',
         };
         console.log('CSR-04');
-        this._dispatchEvent('webauthn:request:options', { data, headers: optionsHeaders });
+        this._dispatchEvent('webauthn:request:options', {data, headers: optionsHeaders});
         console.log('CSR-05');
         const resp = await fetch(this.requestOptionsUrlValue || '/request/options', {
             method: 'POST',
@@ -65,7 +65,7 @@ export default class extends Controller {
         };
 
         console.log('CSR-08');
-        this._dispatchEvent('webauthn:request:response', { response: asseResp, headers: responseHeaders });
+        this._dispatchEvent('webauthn:request:response', {response: asseResp, headers: responseHeaders});
         console.log('CSR-09');
         const verificationResp = await fetch(this.requestResultUrlValue || '/request', {
             method: 'POST',
@@ -100,7 +100,7 @@ export default class extends Controller {
         const optionsHeaders = {
             'Content-Type': 'application/json',
         };
-        this._dispatchEvent('webauthn:creation:options', { data, headers: optionsHeaders });
+        this._dispatchEvent('webauthn:creation:options', {data, headers: optionsHeaders});
         const resp = await fetch(this.creationOptionsUrlValue || '/creation/options', {
             method: 'POST',
             headers: optionsHeaders,
@@ -111,7 +111,7 @@ export default class extends Controller {
         const responseHeaders = {
             'Content-Type': 'application/json',
         };
-        this._dispatchEvent('webauthn:creation:response', { response: attResp, headers: responseHeaders });
+        this._dispatchEvent('webauthn:creation:response', {response: attResp, headers: responseHeaders});
         const verificationResp = await fetch(this.creationResultUrlValue || '/creation', {
             method: 'POST',
             headers: responseHeaders,
@@ -130,7 +130,7 @@ export default class extends Controller {
     }
 
     _dispatchEvent(name: string, payload: any) {
-        this.element.dispatchEvent(new CustomEvent(name, { detail: payload, bubbles: true }));
+        this.element.dispatchEvent(new CustomEvent(name, {detail: payload, bubbles: true}));
     }
 
     _getData() {
@@ -145,7 +145,7 @@ export default class extends Controller {
             return Object.entries(obj)
                 .filter(([_, v]) => v !== null)
                 .reduce(
-                    (acc, [k, v]) => ({ ...acc, [k]: v === Object(v) ? removeEmpty(v) : v }),
+                    (acc, [k, v]) => ({...acc, [k]: v === Object(v) ? removeEmpty(v) : v}),
                     {}
                 );
         }
