@@ -4,20 +4,40 @@ declare(strict_types=1);
 
 namespace Webauthn\Stimulus;
 
-use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
-use Symfony\Component\HttpKernel\Bundle\Bundle;
-use Webauthn\Stimulus\DependencyInjection\WebauthnStimulusExtension;
-use function dirname;
+use Symfony\Component\AssetMapper\AssetMapperInterface;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 
-final class WebauthnStimulusBundle extends Bundle
+final class WebauthnStimulusBundle extends AbstractBundle
 {
-    public function getContainerExtension(): ExtensionInterface
+    public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
     {
-        return new WebauthnStimulusExtension();
+        if (! $this->isAssetMapperAvailable($builder)) {
+            return;
+        }
+
+        $builder->prependExtensionConfig('framework', [
+            'asset_mapper' => [
+                'paths' => [
+                    __DIR__ . '/../../assets/dist' => '@web-auth/webauthn-stimulus',
+                ],
+            ],
+        ]);
     }
 
-    public function getPath(): string
+    private function isAssetMapperAvailable(ContainerBuilder $container): bool
     {
-        return dirname(__DIR__);
+        if (! interface_exists(AssetMapperInterface::class)) {
+            return false;
+        }
+
+        // check that FrameworkBundle is installed
+        $bundlesMetadata = $container->getParameter('kernel.bundles_metadata');
+        if (! isset($bundlesMetadata['FrameworkBundle'])) {
+            return false;
+        }
+
+        return is_file($bundlesMetadata['FrameworkBundle']['path'] . '/Resources/config/asset_mapper.php');
     }
 }
