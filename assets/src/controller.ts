@@ -1,7 +1,11 @@
 'use strict';
 
 import { Controller } from '@hotwired/stimulus';
-import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
+import {
+    AuthenticationResponseJSON,
+    RegistrationResponseJSON
+} from '@simplewebauthn/types';
+import { browserSupportsWebAuthn, browserSupportsWebAuthnAutofill, startAuthentication, startRegistration } from '@simplewebauthn/browser';
 
 export default class extends Controller {
     static values = {
@@ -18,6 +22,12 @@ export default class extends Controller {
         residentKeyField: { type: String, default: 'residentKey' },
         authenticatorAttachmentField: { type: String, default: 'authenticatorAttachment' },
         useBrowserAutofill: { type: Boolean, default: false },
+        requestHeaders: { type: Object, default: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'mode': 'no-cors',
+                'credentials': 'include'
+        } },
     };
 
     declare readonly requestResultUrlValue: string;
@@ -33,8 +43,9 @@ export default class extends Controller {
     declare readonly residentKeyFieldValue: string;
     declare readonly authenticatorAttachmentFieldValue: string;
     declare readonly useBrowserAutofillValue: boolean;
+    declare readonly requestHeadersValue: object;
 
-    connect() {
+    public connect = async () => {
         const options = {
             requestResultUrl: this.requestResultUrlValue,
             requestOptionsUrl: this.requestOptionsUrlValue,
@@ -45,90 +56,85 @@ export default class extends Controller {
         };
 
         this._dispatchEvent('webauthn:connect', { options });
+        const supportAutofill = await browserSupportsWebAuthnAutofill();
+
+        if (supportAutofill && this.useBrowserAutofillValue) {
+            const optionsResponseJson = await this._getPublicKeyCredentialRequestOptions({});
+            if (!optionsResponseJson) {
+                return;
+            }
+            this._processSignin(optionsResponseJson, true);
+        }
     }
 
-    async signin(event: Event): Promise<void> {
+    public async signin(event: Event): Promise<void> {
+        if (!browserSupportsWebAuthn()) {
+            this._dispatchEvent('webauthn:unsupported', {});
+            return;
+        }
         event.preventDefault();
-        const data = this._getData();
+        const optionsResponseJson = await this._getPublicKeyCredentialRequestOptions(null);
+        if (!optionsResponseJson) {
+            return;
+        }
+        this._processSignin(optionsResponseJson, false);
+    }
 
-        this._dispatchEvent('webauthn:request:options', { data });
+    private async _processSignin(optionsResponseJson: Object, useBrowserAutofill: boolean): Promise<void> {
+        try {
+            // @ts-ignore
+            const authenticatorResponse = await startAuthentication(optionsResponseJson, useBrowserAutofill);
+            this._dispatchEvent('webauthn:authenticator:response', { response: authenticatorResponse });
 
-        const resp = await this.fetch('POST', this.requestOptionsUrlValue, JSON.stringify(data));
-        const respJson = await resp.response;
-        const asseResp = await startAuthentication(respJson, this.useBrowserAutofillValue);
-
-        const verificationResp = await this.fetch('POST', this.requestResultUrlValue, JSON.stringify(asseResp));
-        const verificationJSON = await verificationResp.response;
-        this._dispatchEvent('webauthn:request:response', { response: asseResp });
-
-        if (verificationJSON && verificationJSON.errorMessage === '') {
-            this._dispatchEvent('webauthn:request:success', verificationJSON);
-            if (this.requestSuccessRedirectUriValue) {
+            const assertionResponse = await this._getAssertionResponse(authenticatorResponse);
+            if (assertionResponse !== false && this.requestSuccessRedirectUriValue) {
                 window.location.replace(this.requestSuccessRedirectUriValue);
             }
-        } else {
-            this._dispatchEvent('webauthn:request:failure', verificationJSON.errorMessage);
+        } catch (e) {
+            this._dispatchEvent('webauthn:assertion:failure', {});
+            return;
         }
     }
 
-    async signup(event: Event): Promise<void> {
-        event.preventDefault();
-        const data = this._getData();
-        this._dispatchEvent('webauthn:creation:options', { data });
-        const resp = await this.fetch('POST', this.creationOptionsUrlValue, JSON.stringify(data));
+    public async signup(event: Event): Promise<void> {
+        try {
+            if (!browserSupportsWebAuthn()) {
+                this._dispatchEvent('webauthn:unsupported', {});
+                return;
+            }
+            event.preventDefault();
+            const optionsResponseJson = await this._getPublicKeyCredentialCreationOptions(null);
+            if (!optionsResponseJson) {
+                return;
+            }
 
-        const respJson = await resp.response;
-        if (respJson.excludeCredentials === undefined) {
-            respJson.excludeCredentials = [];
-        }
-        const attResp = await startRegistration(respJson);
-        this._dispatchEvent('webauthn:creation:response', { response: attResp });
-        const verificationResp = await this.fetch('POST', this.creationResultUrlValue, JSON.stringify(attResp));
+            // @ts-ignore
+            const authenticatorResponse = await startRegistration(optionsResponseJson);
+            this._dispatchEvent('webauthn:authenticator:response', { response: authenticatorResponse });
 
-        const verificationJSON = await verificationResp.response;
-        if (verificationJSON && verificationJSON.errorMessage === '') {
-            this._dispatchEvent('webauthn:creation:success', verificationJSON);
-            if (this.creationSuccessRedirectUriValue) {
+            const attestationResponseJSON = await this._getAttestationResponse(authenticatorResponse);
+            if (attestationResponseJSON !== false && this.creationSuccessRedirectUriValue) {
                 window.location.replace(this.creationSuccessRedirectUriValue);
             }
-        } else {
-            this._dispatchEvent('webauthn:creation:failure', verificationJSON.errorMessage);
+        } catch (e) {
+            this._dispatchEvent('webauthn:attestation:failure', {});
+            return;
         }
     }
 
-    _dispatchEvent(name: string, payload: any): void {
+    private _dispatchEvent(name: string, payload: any): void {
         this.element.dispatchEvent(new CustomEvent(name, { detail: payload, bubbles: true }));
     }
 
-    fetch(method: string, url: string, body: string): Promise<XMLHttpRequest> {
-        return new Promise(function (resolve, reject) {
-            const xhr = new XMLHttpRequest();
-            xhr.open(method, url);
-            xhr.responseType = 'json';
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.onload = function () {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    resolve(xhr);
-                } else {
-                    reject({
-                        status: xhr.status,
-                        statusText: xhr.statusText,
-                    });
-                }
-            };
-            xhr.onerror = function () {
-                reject({
-                    status: xhr.status,
-                    statusText: xhr.statusText,
-                });
-            };
-            xhr.send(body);
-        });
-    }
-
-    _getData() {
+    private  _getData() {
         let data = new FormData();
         try {
+            // @ts-ignore
+            this.element.reportValidity()
+            // @ts-ignore
+            if (!this.element.checkValidity()) {
+                return;
+            }
             // @ts-ignore
             data = new FormData(this.element);
         } catch (e) {
@@ -149,5 +155,61 @@ export default class extends Controller {
             residentKey: data.get(this.residentKeyFieldValue),
             authenticatorAttachment: data.get(this.authenticatorAttachmentFieldValue),
         });
+    }
+
+    private async _getPublicKeyCredentialRequestOptions(formData: null|Object): Promise<false|Object> {
+        return this._getOptions(this.requestOptionsUrlValue, formData);
+    }
+
+    private async _getPublicKeyCredentialCreationOptions(formData: null|Object): Promise<false|Object> {
+        return this._getOptions(this.creationOptionsUrlValue, formData);
+    }
+
+    private async _getOptions(url: string, formData: null|Object): Promise<false|Object> {
+        const data = formData || this._getData();
+        if (!data) {
+            return false;
+        }
+
+        this._dispatchEvent('webauthn:options:request', { data });
+        const optionsResponse = await fetch(url, {
+            headers: {...this.requestHeadersValue},
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        if (!optionsResponse.ok) {
+            this._dispatchEvent('webauthn:options:failure', {});
+            return false;
+        }
+
+        const options = await optionsResponse.json();
+        this._dispatchEvent('webauthn:options:success', {data: options});
+
+        return options;
+    }
+
+    private async _getAttestationResponse(authenticatorResponse: RegistrationResponseJSON) {
+        return this._getResult(this.creationResultUrlValue, 'webauthn:attestation:', authenticatorResponse);
+    }
+
+    private async _getAssertionResponse(authenticatorResponse: AuthenticationResponseJSON) {
+        return this._getResult(this.requestResultUrlValue, 'webauthn:assertion:', authenticatorResponse);
+    }
+
+    private async _getResult(url: string, eventPrefix: string, authenticatorResponse: RegistrationResponseJSON|AuthenticationResponseJSON): Promise<false|Object> {
+
+        const attestationResponse = await fetch(url, {
+            headers: {...this.requestHeadersValue},
+            method:'POST',
+            body: JSON.stringify(authenticatorResponse)
+        });
+        if (!attestationResponse.ok) {
+            this._dispatchEvent(eventPrefix+'failure', {});
+            return false;
+        }
+        const attestationResponseJSON = await attestationResponse.json();
+        this._dispatchEvent(eventPrefix+'success', {data:attestationResponseJSON});
+
+        return attestationResponseJSON;
     }
 }

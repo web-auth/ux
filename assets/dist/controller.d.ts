@@ -47,6 +47,15 @@ export default class extends Controller {
             type: BooleanConstructor;
             default: boolean;
         };
+        requestHeaders: {
+            type: ObjectConstructor;
+            default: {
+                'Content-Type': string;
+                Accept: string;
+                mode: string;
+                credentials: string;
+            };
+        };
     };
     readonly requestResultUrlValue: string;
     readonly requestOptionsUrlValue: string;
@@ -61,10 +70,17 @@ export default class extends Controller {
     readonly residentKeyFieldValue: string;
     readonly authenticatorAttachmentFieldValue: string;
     readonly useBrowserAutofillValue: boolean;
-    connect(): void;
+    readonly requestHeadersValue: object;
+    connect: () => Promise<void>;
     signin(event: Event): Promise<void>;
+    private _processSignin;
     signup(event: Event): Promise<void>;
-    _dispatchEvent(name: string, payload: any): void;
-    fetch(method: string, url: string, body: string): Promise<XMLHttpRequest>;
-    _getData(): any;
+    private _dispatchEvent;
+    private _getData;
+    private _getPublicKeyCredentialRequestOptions;
+    private _getPublicKeyCredentialCreationOptions;
+    private _getOptions;
+    private _getAttestationResponse;
+    private _getAssertionResponse;
+    private _getResult;
 }
