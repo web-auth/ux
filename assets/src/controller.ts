@@ -91,7 +91,7 @@ export default class extends Controller {
                 window.location.replace(this.requestSuccessRedirectUriValue);
             }
         } catch (e) {
-            this._dispatchEvent('webauthn:assertion:failure', {});
+            this._dispatchEvent('webauthn:assertion:failure', {exception: e});
             return;
         }
     }
@@ -117,7 +117,7 @@ export default class extends Controller {
                 window.location.replace(this.creationSuccessRedirectUriValue);
             }
         } catch (e) {
-            this._dispatchEvent('webauthn:attestation:failure', {});
+            this._dispatchEvent('webauthn:attestation:failure', {exception: e});
             return;
         }
     }

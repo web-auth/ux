@@ -47,7 +47,7 @@ class default_1 extends Controller {
             }
         }
         catch (e) {
-            this._dispatchEvent('webauthn:assertion:failure', {});
+            this._dispatchEvent('webauthn:assertion:failure', {exception: e});
             return;
         }
     }
@@ -70,7 +70,7 @@ class default_1 extends Controller {
             }
         }
         catch (e) {
-            this._dispatchEvent('webauthn:attestation:failure', {});
+            this._dispatchEvent('webauthn:attestation:failure', {exception: e});
             return;
         }
     }
